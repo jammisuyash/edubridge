@@ -1,0 +1,35 @@
+# ─── Python ───────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# ─── Virtual environments ─────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+
+# ─── ENVIRONMENT VARIABLES — NEVER COMMIT ─────────────────────
+# .env contains your SECRET_KEY and GEMINI_API_KEY
+# Add these as Environment Variables in Vercel dashboard instead
+.env
+
+# ─── Student data (local only) ────────────────────────────────
+# On Vercel, DATA_DIR is set to /tmp which is not persisted anyway
+data/
+
+# ─── Editor / OS files ────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Vercel local dev ─────────────────────────────────────────
+.vercel/

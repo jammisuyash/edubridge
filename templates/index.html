@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="description" content="EduBridge — Your 24/7 Smart Study Companion. Doubt solver, quizzes, flashcards, progress tracking." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="EduBridge" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+  <title>EduBridge — Your 24/7 Study Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     SPLASH SCREEN
+═══════════════════════════════════════════════ -->
+<div id="splash">
+  <div class="splash-box">
+    <div class="splash-logo">EB</div>
+    <div class="splash-name">EduBridge</div>
+    <div class="splash-track"><div class="splash-fill" id="splashFill"></div></div>
+    <div class="splash-hint">Loading your study companion...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     BACKGROUND PARTICLES
+═══════════════════════════════════════════════ -->
+<canvas id="particles"></canvas>
+
+<!-- ═══════════════════════════════════════════════
+     PWA INSTALL BANNER
+═══════════════════════════════════════════════ -->
+<div id="installBanner">
+  <span>📲 Install EduBridge for offline access</span>
+  <button id="installBtn">Install App</button>
+  <button id="bannerClose">✕</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     STUDENT NAME MODAL (shown on first visit)
+═══════════════════════════════════════════════ -->
+<div id="nameModal" class="modal-overlay">
+  <div class="modal-box glass">
+    <div class="modal-logo">EB</div>
+    <h2>Welcome to EduBridge!</h2>
+    <p>Enter your name so we can track your progress.</p>
+    <input type="text" id="studentNameInput" class="modal-input" placeholder="Your name (e.g. Arjun)" maxlength="30" />
+    <div id="nameError" class="modal-error"></div>
+    <button class="btn-primary full-width" onclick="App.setStudent()">Start Learning →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     NAVIGATION
+═══════════════════════════════════════════════ -->
+<nav id="mainNav">
+  <div class="nav-brand">
+    <div class="nav-logo">EB</div>
+    <span class="nav-name">EduBridge</span>
+  </div>
+
+  <div class="nav-links" id="navLinks">
+    <a href="#hero"     class="nav-link active">Home</a>
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#app"      class="nav-link">Study</a>
+    <a href="#why"      class="nav-link">Why Us</a>
+  </div>
+
+  <div class="nav-right">
+    <div class="streak-pill" id="streakDisplay">🔥 <span id="streakNum">0</span> days</div>
+    <div class="student-pill" id="studentDisplay"></div>
+    <span class="offline-tag" id="offlineTag">● Offline</span>
+    <button class="hamburger" id="hamburger" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#hero"     onclick="UI.closeMenu()">Home</a>
+  <a href="#features" onclick="UI.closeMenu()">Features</a>
+  <a href="#app"      onclick="UI.closeMenu()">Study Now</a>
+  <a href="#why"      onclick="UI.closeMenu()">Why EduBridge</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 1: HERO
+═══════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-content reveal">
+    <div class="hero-badge">
+      <span class="live-dot"></span>
+      Live · Offline-Ready · Free for All Students
+    </div>
+
+    <h1>Your <span class="gradient-text">Smartest</span><br/>Study Companion</h1>
+
+    <p class="hero-sub">
+      Ask any doubt. Take adaptive quizzes.<br/>
+      Flip flashcards. Track your growth.<br/>
+      EduBridge is the tutor every student deserves — anytime, anywhere.
+    </p>
+
+    <div class="hero-cta">
+      <a href="#app" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Learning Free
+      </a>
+      <a href="#features" class="btn-ghost">See How It Works →</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hstat"><span class="hstat-n" data-target="320">0</span><span class="hstat-u">M+</span><span class="hstat-l">Indian Students</span></div>
+      <div class="hstat-sep"></div>
+      <div class="hstat"><span class="hstat-n" data-target="16">0</span><span class="hstat-u"></span><span class="hstat-l">Python Concepts</span></div>
+      <div class="hstat-sep"></div>
+      <div class="hstat"><span class="hstat-n" data-target="100">0</span><span class="hstat-u">%</span><span class="hstat-l">Free for Students</span></div>
+    </div>
+  </div>
+
+  <!-- Phone mockup (decorative) -->
+  <div class="hero-phone reveal-right">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-body">
+        <div class="phone-header">
+          <div class="ph-av">EB</div>
+          <div>
+            <div class="ph-name">EduBridge</div>
+            <div class="ph-status"><span class="live-dot tiny"></span> Always here</div>
+          </div>
+        </div>
+        <div class="phone-chat" id="phoneChat">
+          <div class="pc-msg bot">Hi! What shall we study today? 👋</div>
+          <div class="pc-msg user">Explain recursion please</div>
+          <div class="pc-msg bot" id="pcTyping">
+            <span class="tp"></span><span class="tp"></span><span class="tp"></span>
+          </div>
+        </div>
+        <div class="phone-input-bar">
+          <div class="ph-fake-input">Ask anything...</div>
+          <div class="ph-send">↑</div>
+        </div>
+      </div>
+    </div>
+    <div class="float-chip fc1">🏆 95% on Python!</div>
+    <div class="float-chip fc2">📚 12 doubts solved</div>
+    <div class="float-chip fc3">🔥 5 day streak!</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 2: FEATURES
+═══════════════════════════════════════════════ -->
+<section id="features">
+  <div class="sec-head reveal">
+    <div class="sec-tag">What we offer</div>
+    <h2>Four tools. One mission.</h2>
+    <p class="sec-sub">Everything built purely from Python syllabus concepts — no external AI, no server-side magic.</p>
+  </div>
+
+  <div class="feat-grid">
+    <div class="fcard neo reveal-up" style="--delay:0s">
+      <div class="fcard-glow gp"></div>
+      <div class="fcard-icon purple-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+      </div>
+      <h3>Smart Doubt Solver</h3>
+      <p>Type any question. Our string-matching engine scans a dictionary of topics and returns step-by-step explanations with code examples instantly.</p>
+      <div class="fcard-tags"><span>Strings</span><span>Dictionaries</span><span>Functions</span></div>
+    </div>
+
+    <div class="fcard neo reveal-up featured-card" style="--delay:0.1s">
+      <div class="fcard-glow gt"></div>
+      <div class="feat-pill">⭐ Most Used</div>
+      <div class="fcard-icon teal-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3>Adaptive Quiz Engine</h3>
+      <p>Wrong answers are re-queued recursively until mastered. Weak topics tracked in sets. Scores saved to files after every session.</p>
+      <div class="fcard-tags"><span>Recursion</span><span>Lists</span><span>Sets</span><span>File I/O</span></div>
+    </div>
+
+    <div class="fcard neo reveal-up" style="--delay:0.2s">
+      <div class="fcard-glow gpk"></div>
+      <div class="fcard-icon pink-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <h3>Flashcard Studio</h3>
+      <p>Flip through 14 concept cards for rapid revision. Stored as tuples in lists. Mark each card as known or needs-review to focus your study time.</p>
+      <div class="fcard-tags"><span>Tuples</span><span>Lists</span><span>Branching</span></div>
+    </div>
+
+    <div class="fcard neo reveal-up" style="--delay:0.3s">
+      <div class="fcard-glow ga"></div>
+      <div class="fcard-icon amber-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <h3>Progress Dashboard</h3>
+      <p>Full session history saved to JSON files. Score chart, streak counter, weak topic chips — all read back from the Python backend via API.</p>
+      <div class="fcard-tags"><span>File I/O</span><span>Modules</span><span>Exceptions</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 3: APP (THE ACTUAL STUDY TOOL)
+═══════════════════════════════════════════════ -->
+<section id="app">
+  <div class="sec-head reveal">
+    <div class="sec-tag">Try it live</div>
+    <h2>Your study session starts here</h2>
+  </div>
+
+  <div class="app-shell reveal">
+
+    <!-- Sidebar navigation -->
+    <div class="app-sidebar">
+      <button class="sbtn active" data-tab="doubt" title="Doubt Solver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+        <span>Doubts</span>
+      </button>
+      <button class="sbtn" data-tab="quiz" title="Quiz Mode">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Quiz</span>
+      </button>
+      <button class="sbtn" data-tab="flash" title="Flashcards">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span>Cards</span>
+      </button>
+      <button class="sbtn" data-tab="progress" title="My Progress">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Progress</span>
+      </button>
+    </div>
+
+    <!-- Main content area -->
+    <div class="app-main">
+
+      <!-- ─── PANEL: DOUBT SOLVER ─── -->
+      <div class="panel active" id="panel-doubt">
+        <div class="panel-hdr">
+          <div>
+            <h3>Doubt Solver</h3>
+            <p>Powered by Python string-matching + dictionary lookup</p>
+          </div>
+          <button class="icon-btn" onclick="Doubt.clear()" title="Clear chat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+
+        <!-- Quick topic pills -->
+        <div class="quick-pills">
+          <button class="qpill" onclick="Doubt.ask('What is recursion?')">Recursion</button>
+          <button class="qpill" onclick="Doubt.ask('Explain for loop')">For Loop</button>
+          <button class="qpill" onclick="Doubt.ask('What is a dictionary?')">Dictionary</button>
+          <button class="qpill" onclick="Doubt.ask('Explain sets in Python')">Sets</button>
+          <button class="qpill" onclick="Doubt.ask('What is exception handling?')">Exceptions</button>
+          <button class="qpill" onclick="Doubt.ask('How does file handling work?')">File I/O</button>
+          <button class="qpill" onclick="Doubt.ask('Explain photosynthesis')">Photosynthesis</button>
+          <button class="qpill" onclick="Doubt.ask('What is Newton first law?')">Newton Laws</button>
+        </div>
+
+        <!-- Chat window -->
+        <div class="chat-window" id="chatWindow">
+          <div class="chat-msg bot">
+            <div class="chat-av">EB</div>
+            <div class="chat-bub">
+              Hi! I'm EduBridge 👋 Ask me any doubt — Python, Science, Maths, or History!<br/>
+              Tap a topic above or type your question below.
+            </div>
+          </div>
+        </div>
+
+        <!-- Input row -->
+        <div class="chat-input-row">
+          <input type="text" id="doubtInput" class="chat-input"
+                 placeholder="e.g. What is recursion? or Explain photosynthesis"
+                 onkeydown="if(event.key==='Enter') Doubt.ask()" />
+          <button class="send-btn" id="sendBtn" onclick="Doubt.ask()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── PANEL: QUIZ ─── -->
+      <div class="panel" id="panel-quiz" style="display:none">
+        <div class="panel-hdr">
+          <div><h3>Adaptive Quiz</h3><p>Wrong answers repeat until you master them</p></div>
+        </div>
+
+        <!-- Step 1: Topic selection -->
+        <div id="quizTopicPicker">
+          <p class="picker-label">Choose a subject to practice:</p>
+          <div class="topic-grid">
+            <button class="topic-btn" onclick="Quiz.start('Python')">
+              <span class="topic-emoji">🐍</span>
+              <span class="topic-name">Python</span>
+              <span class="topic-count">8 questions</span>
+            </button>
+            <button class="topic-btn" onclick="Quiz.start('Science')">
+              <span class="topic-emoji">🔬</span>
+              <span class="topic-name">Science</span>
+              <span class="topic-count">6 questions</span>
+            </button>
+            <button class="topic-btn" onclick="Quiz.start('Maths')">
+              <span class="topic-emoji">📐</span>
+              <span class="topic-name">Maths</span>
+              <span class="topic-count">6 questions</span>
+            </button>
+            <button class="topic-btn" onclick="Quiz.start('History')">
+              <span class="topic-emoji">📜</span>
+              <span class="topic-name">History</span>
+              <span class="topic-count">5 questions</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Active quiz -->
+        <div id="quizActive" style="display:none">
+          <div class="quiz-topbar">
+            <span class="quiz-topic-lbl" id="quizTopicLbl"></span>
+            <span class="quiz-qnum" id="quizQNum"></span>
+            <span class="quiz-live-score">Score: <b id="quizLiveScore">0</b></span>
+          </div>
+          <div class="quiz-pbar"><div class="quiz-pfill" id="quizPFill"></div></div>
+          <div class="quiz-q-card" id="quizQCard"></div>
+          <div class="quiz-opts" id="quizOpts"></div>
+          <div class="quiz-feedback" id="quizFeedback" style="display:none"></div>
+          <button class="btn-primary" id="quizNextBtn" onclick="Quiz.next()" style="display:none;margin-top:14px">
+            Next Question →
+          </button>
+        </div>
+
+        <!-- Step 3: Results -->
+        <div id="quizResult" style="display:none;text-align:center;padding:16px 0">
+          <div class="result-ring">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="56" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"/>
+              <circle cx="70" cy="70" r="56" fill="none" stroke="url(#rg)" stroke-width="12"
+                stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"
+                id="resultRingArc" transform="rotate(-90 70 70)"/>
+              <defs>
+                <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stop-color="#7c3aed"/>
+                  <stop offset="100%" stop-color="#2dd4bf"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="result-pct" id="resultPct"></div>
+          </div>
+          <h3 id="resultTitle" style="font-size:20px;margin:14px 0 6px"></h3>
+          <p  id="resultBody"  style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:20px"></p>
+          <button class="btn-primary" onclick="Quiz.retry()">Retry 🔄</button>
+          <button class="btn-ghost sm" onclick="Quiz.reset()" style="margin-left:10px">Change Topic</button>
+        </div>
+      </div>
+
+      <!-- ─── PANEL: FLASHCARDS ─── -->
+      <div class="panel" id="panel-flash" style="display:none">
+        <div class="panel-hdr">
+          <div><h3>Flashcard Studio</h3><p>Tap the card to flip · Mark known or review</p></div>
+          <div class="fc-counter" id="fcCounter">– / –</div>
+        </div>
+
+        <div class="fc-deck">
+          <div class="fc-card" id="fcCard" onclick="Flash.flip()">
+            <div class="fc-inner" id="fcInner">
+              <div class="fc-front">
+                <div class="fc-tag" id="fcTag">Loading...</div>
+                <div class="fc-question" id="fcQuestion">Loading...</div>
+                <div class="fc-hint">Tap to reveal answer →</div>
+              </div>
+              <div class="fc-back">
+                <div class="fc-answer" id="fcAnswer"></div>
+                <pre class="fc-example" id="fcExample"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fc-controls">
+          <button class="fc-btn prev" onclick="Flash.nav(-1)">← Prev</button>
+          <button class="fc-btn review" onclick="Flash.mark('review')">⚠ Review</button>
+          <button class="fc-btn known"  onclick="Flash.mark('known')">✓ Got it</button>
+          <button class="fc-btn next"   onclick="Flash.nav(1)">Next →</button>
+        </div>
+
+        <div class="fc-track-row">
+          <span id="fcKnownCount" style="color:#2dd4bf;font-size:13px">Known: 0</span>
+          <div class="fc-track"><div class="fc-track-fill" id="fcTrackFill"></div></div>
+          <span id="fcReviewCount" style="color:#f472b6;font-size:13px">Review: 0</span>
+        </div>
+      </div>
+
+      <!-- ─── PANEL: PROGRESS ─── -->
+      <div class="panel" id="panel-progress" style="display:none">
+        <div class="panel-hdr">
+          <div><h3>My Progress</h3><p>Your full learning journey — saved to file</p></div>
+          <button class="icon-btn danger" onclick="Progress.clear()" title="Reset progress">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+
+        <div class="prog-stats-grid">
+          <div class="pstat neo"><div class="pstat-val" id="pSessions">0</div><div class="pstat-lbl">Sessions</div></div>
+          <div class="pstat neo"><div class="pstat-val" id="pDoubts">0</div><div class="pstat-lbl">Doubts</div></div>
+          <div class="pstat neo"><div class="pstat-val" id="pAvg">0%</div><div class="pstat-lbl">Avg Score</div></div>
+          <div class="pstat neo"><div class="pstat-val" id="pStreak">🔥0</div><div class="pstat-lbl">Streak</div></div>
+        </div>
+
+        <div class="prog-section">
+          <h4>Score History</h4>
+          <div class="score-chart" id="scoreChart">
+            <div class="chart-empty">Complete quizzes to see your score history</div>
+          </div>
+        </div>
+
+        <div class="prog-section">
+          <h4>Topics to Revisit</h4>
+          <div class="weak-chips" id="weakChips">
+            <span class="chip-empty">No weak topics yet — keep going!</span>
+          </div>
+        </div>
+
+        <div class="prog-section">
+          <h4>Recent Sessions</h4>
+          <div id="sessionLog">
+            <div class="chip-empty">No quiz sessions yet.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /app-main -->
+  </div><!-- /app-shell -->
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 4: WHY EDUBRIDGE
+═══════════════════════════════════════════════ -->
+<section id="why">
+  <div class="sec-head reveal">
+    <div class="sec-tag">Why EduBridge</div>
+    <h2>Built for every student</h2>
+  </div>
+  <div class="why-grid">
+    <div class="why-card glass reveal-up" style="--delay:0s">
+      <div class="why-emoji">🌐</div><h4>Works Offline</h4>
+      <p>Installed as a PWA, EduBridge works without internet — perfect for rural students.</p>
+    </div>
+    <div class="why-card glass reveal-up" style="--delay:0.1s">
+      <div class="why-emoji">🆓</div><h4>Always Free</h4>
+      <p>Core features free forever. Schools subscribe for dashboards. Students never pay.</p>
+    </div>
+    <div class="why-card glass reveal-up" style="--delay:0.2s">
+      <div class="why-emoji">🔒</div><h4>100% Private</h4>
+      <p>All data saved locally in your own files. No account needed, no cloud tracking.</p>
+    </div>
+    <div class="why-card glass reveal-up" style="--delay:0.3s">
+      <div class="why-emoji">⚡</div><h4>Instant Answers</h4>
+      <p>Fast Flask backend — every doubt solved in milliseconds from local knowledge base.</p>
+    </div>
+    <div class="why-card glass reveal-up" style="--delay:0.4s">
+      <div class="why-emoji">🎯</div><h4>Curriculum Aligned</h4>
+      <p>Python, Science, Maths, History — exactly what's in your syllabus. Nothing extra.</p>
+    </div>
+    <div class="why-card glass reveal-up" style="--delay:0.5s">
+      <div class="why-emoji">🏆</div><h4>Gamified Learning</h4>
+      <p>Daily streaks, score rings, progress tracking keep students motivated every day.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="nav-logo">EB</div>
+      <div>
+        <div class="footer-name">EduBridge</div>
+        <div class="footer-sub">Your 24/7 Study Companion</div>
+      </div>
+    </div>
+    <div class="footer-links">
+      <a href="#hero">Home</a>
+      <a href="#features">Features</a>
+      <a href="#app">Study</a>
+      <a href="#why">Why Us</a>
+    </div>
+    <div class="footer-copy">
+      Built with Python · Flask · For every student · Everywhere<br/>
+      <span>Case Study Project · Not a commercial product</span>
+    </div>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
