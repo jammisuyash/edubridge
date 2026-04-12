@@ -1,33 +1,26 @@
 """
 app.py — EduBridge Flask Backend
-=================================
-Free AI powered by Google Gemini (no credit card needed).
-
-HOW TO RUN LOCALLY:
-    1. Copy .env.example to .env and fill in your values
-    2. pip install -r requirements.txt
-    3. python app.py  →  open http://localhost:5000
-
-HOW TO RUN ON VERCEL:
-    Set these in Vercel Dashboard → Project → Settings → Environment Variables:
-      SECRET_KEY   = any long random string
-      GEMINI_API_KEY = your key from aistudio.google.com/apikey
-
-SYLLABUS CONCEPTS:
-    Functions, Dictionaries, Lists, Tuples, Sets,
-    File I/O, Exception handling, Modules, Strings
+Gemini AI integrated. Works on Vercel and locally.
 """
 
 import os
 import json
 import urllib.request
 import urllib.error
-from dotenv import load_dotenv
-from flask import Flask, render_template, request, jsonify, session
 
-# Load .env file when running locally
-# On Vercel, env vars are injected directly — load_dotenv() safely does nothing
-load_dotenv()
+# ── Only load .env file when running LOCALLY ──────────────────
+# On Vercel: env vars are already injected before Python starts.
+# We must NOT call load_dotenv() on Vercel because it can
+# accidentally overwrite injected vars with .env.example values.
+# Solution: only load dotenv if NOT on Vercel.
+if not os.environ.get("VERCEL"):
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(override=False)
+    except ImportError:
+        pass  # dotenv not installed — fine, we read os.environ directly
+
+from flask import Flask, render_template, request, jsonify, session
 
 from modules.doubt_solver     import DoubtSolver
 from modules.quiz_engine      import QuizEngine
@@ -43,12 +36,10 @@ from modules.exceptions import (
 # ─────────────────────────────────────────────
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "edubridge-fallback-secret-2024")
 
-# SECRET_KEY signs session cookies — must be set in Vercel env vars
-app.secret_key = os.environ.get("SECRET_KEY", "change-this-in-production")
-
-# On Vercel only /tmp is writable. Auto-detect via the VERCEL env var
-# that Vercel injects automatically into every deployment.
+# Vercel's filesystem: only /tmp is writable
+# Vercel automatically sets the VERCEL environment variable
 if os.environ.get("VERCEL"):
     ProgressTracker.DATA_DIR = "/tmp/edubridge_data"
 else:
@@ -59,44 +50,47 @@ quiz_engine  = QuizEngine()
 
 
 # ─────────────────────────────────────────────
-# GEMINI AI HELPER
+# GEMINI HELPER
 # ─────────────────────────────────────────────
 
 def call_gemini(question: str) -> str:
     """
-    Call Google Gemini API using urllib (Python built-in — no extra library).
-    Free tier: 1,500 requests/day. No credit card needed.
-    Key from: https://aistudio.google.com/apikey
-
-    Syllabus: Modules (urllib, json), Strings, Dictionaries, Exception handling
+    Calls Google Gemini 2.0 Flash API using urllib (Python built-in).
+    Free tier — no credit card needed.
+    Get key at: https://aistudio.google.com/apikey
     """
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
 
     if not api_key:
-        raise ValueError("GEMINI_API_KEY not set.")
+        raise ValueError("NO_KEY")
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"gemini-2.0-flash:generateContent?key={api_key}"
     )
 
-    # Build request payload as a dictionary, then JSON-encode it
-    payload = json.dumps({
+    body = json.dumps({
         "systemInstruction": {
             "parts": [{
                 "text": (
                     "You are EduBridge, a friendly study companion for Indian students "
-                    "aged 14-22. Answer clearly. Structure: 1) Brief explanation "
-                    "2) Simple example 3) One quick tip. Max 150 words. Simple language."
+                    "aged 14-22. Structure your answer as: "
+                    "1) Brief explanation (2-3 sentences) "
+                    "2) A simple example "
+                    "3) One quick memory tip. "
+                    "Keep the total response under 200 words. Use simple English."
                 )
             }]
         },
         "contents": [{"parts": [{"text": question}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 400}
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 500
+        }
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        url, data=payload,
+        url, data=body,
         headers={"Content-Type": "application/json"},
         method="POST"
     )
@@ -107,24 +101,25 @@ def call_gemini(question: str) -> str:
             return data["candidates"][0]["content"]["parts"][0]["text"]
 
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8")
+        body_text = e.read().decode("utf-8")
+        if e.code == 400:
+            raise ValueError(f"BAD_REQUEST: {body_text[:200]}")
         if e.code == 403:
-            raise ValueError("Invalid Gemini API key.")
+            raise ValueError("INVALID_KEY")
         if e.code == 429:
-            raise ValueError("Rate limit hit — wait 1 minute.")
-        raise ValueError(f"Gemini error {e.code}: {body[:150]}")
+            raise ValueError("RATE_LIMIT")
+        raise ValueError(f"HTTP_{e.code}: {body_text[:200]}")
 
-    except urllib.error.URLError:
-        raise ConnectionError("Cannot reach Gemini. Check internet connection.")
+    except urllib.error.URLError as e:
+        raise ConnectionError(f"NETWORK_ERROR: {str(e)}")
 
 
 def get_tracker():
-    """Get ProgressTracker for the current session's student."""
     return ProgressTracker(session.get("student_id", "guest"))
 
 
 # ─────────────────────────────────────────────
-# PAGE ROUTE
+# PAGE
 # ─────────────────────────────────────────────
 
 @app.route("/")
@@ -133,12 +128,44 @@ def index():
 
 
 # ─────────────────────────────────────────────
-# API: STUDENT SESSION
+# DEBUG — shows exactly what the server sees
+# Visit /api/debug in browser to diagnose issues
+# ─────────────────────────────────────────────
+
+@app.route("/api/debug")
+def debug():
+    key = os.environ.get("GEMINI_API_KEY", "")
+    secret = os.environ.get("SECRET_KEY", "")
+
+    # Mask the key safely
+    if key and len(key) > 8:
+        masked = key[:6] + "..." + key[-4:]
+    elif key:
+        masked = "too_short_" + str(len(key)) + "_chars"
+    else:
+        masked = "NOT_SET"
+
+    return jsonify({
+        "status": "ok",
+        "GEMINI_API_KEY": masked,
+        "key_length": len(key),
+        "key_starts_AIza": key.startswith("AIza"),
+        "key_is_placeholder": key in ("", "your-AIza-key-here", "paste-your-key-here"),
+        "gemini_configured": len(key) > 10 and key.startswith("AIza"),
+        "SECRET_KEY_set": len(secret) > 5,
+        "VERCEL": os.environ.get("VERCEL", "not_set"),
+        "FLASK_ENV": os.environ.get("FLASK_ENV", "not_set"),
+        "data_dir": ProgressTracker.DATA_DIR,
+        "python_version": __import__("sys").version,
+    })
+
+
+# ─────────────────────────────────────────────
+# API: STUDENT
 # ─────────────────────────────────────────────
 
 @app.route("/api/set-student", methods=["POST"])
 def set_student():
-    """Save student name to session. Syllabus: Strings, Exception handling"""
     try:
         data = request.get_json()
         if not data:
@@ -153,16 +180,11 @@ def set_student():
 
 
 # ─────────────────────────────────────────────
-# API: DOUBT SOLVER  (local KB + Gemini fallback)
+# API: SOLVE DOUBT  — local KB first, then Gemini
 # ─────────────────────────────────────────────
 
 @app.route("/api/solve", methods=["POST"])
 def solve_doubt():
-    """
-    Layer 1: Local string-matching on TOPIC_BANK (instant, offline)
-    Layer 2: Gemini AI for anything outside the local knowledge base
-    Syllabus: Strings, Dictionaries, Functions, Exception handling
-    """
     try:
         data = request.get_json()
         if not data:
@@ -171,19 +193,19 @@ def solve_doubt():
         if not question:
             raise InvalidInputError("Question cannot be empty.")
 
-        # ── Layer 1: local knowledge base
+        # Layer 1 — local knowledge base (instant, offline)
         try:
             result = doubt_solver.solve(question)
             get_tracker().log_doubt(question, result.get("title", ""))
             result["source"] = "local"
             return jsonify({"success": True, "result": result, "source": "local"})
         except TopicNotFoundError:
-            pass  # fall through to Gemini
+            pass
 
-        # ── Layer 2: Gemini AI
+        # Layer 2 — Gemini AI
         try:
             ai_text = call_gemini(question)
-            get_tracker().log_doubt(question, "AI Answer")
+            get_tracker().log_doubt(question, "AI")
             return jsonify({
                 "success": True,
                 "source":  "ai",
@@ -196,26 +218,42 @@ def solve_doubt():
                 }
             })
 
-        except ValueError as e:
-            # Key not configured — give friendly setup message
+        except ValueError as ve:
+            err = str(ve)
+            # Return a helpful message based on the error code
+            if "NO_KEY" in err:
+                msg = "Gemini API key not set. Add GEMINI_API_KEY in Vercel environment variables."
+            elif "INVALID_KEY" in err:
+                msg = "Gemini API key is invalid. Check the key in your Vercel settings."
+            elif "RATE_LIMIT" in err:
+                msg = "Gemini rate limit hit. Wait 1 minute and try again."
+            else:
+                msg = f"Gemini error: {err}"
+
             return jsonify({
                 "success": True,
-                "source":  "no_key",
+                "source":  "error",
                 "result": {
-                    "title": "Topic Not in Local KB",
-                    "steps": [
-                        f"'{question}' isn't in my local knowledge base.",
-                        "To answer any question, set GEMINI_API_KEY in your Vercel environment variables.",
-                        "Get a free key (no credit card) at: aistudio.google.com/apikey",
-                    ],
-                    "example": "",
-                    "tip": "Free Gemini tier: 1,500 requests/day with just a Google account.",
-                    "topic_key": "no_key",
+                    "title":     "Could Not Get AI Answer",
+                    "steps":     [msg, "Visit /api/debug to diagnose the issue."],
+                    "example":   "",
+                    "tip":       "",
+                    "topic_key": "error",
                 }
             })
 
-        except ConnectionError as e:
-            return jsonify({"success": False, "error": str(e)}), 503
+        except ConnectionError as ce:
+            return jsonify({
+                "success": True,
+                "source":  "error",
+                "result": {
+                    "title":     "Network Error",
+                    "steps":     [str(ce)],
+                    "example":   "",
+                    "tip":       "This usually means the Vercel function cannot reach the internet.",
+                    "topic_key": "error",
+                }
+            })
 
     except InvalidInputError as e:
         return jsonify({"success": False, "error": str(e)}), 400
@@ -229,7 +267,6 @@ def solve_doubt():
 
 @app.route("/api/quiz/start", methods=["POST"])
 def start_quiz():
-    """Generate quiz questions. Answers stored in session — not sent to browser."""
     try:
         data = request.get_json()
         if not data:
@@ -254,7 +291,6 @@ def start_quiz():
 
 @app.route("/api/quiz/submit", methods=["POST"])
 def submit_quiz():
-    """Score answers, save to file. Syllabus: Tuples, Lists, Sets, File I/O"""
     try:
         data = request.get_json()
         if not data:
@@ -290,10 +326,9 @@ def submit_quiz():
 
 @app.route("/api/flashcards", methods=["GET"])
 def get_flashcards():
-    """Return flashcards from list of tuples. Syllabus: Tuples, Lists, Loops"""
     cards = []
     for i, card_tuple in enumerate(FLASHCARDS):
-        tag, question, answer, example = card_tuple  # tuple unpacking
+        tag, question, answer, example = card_tuple
         cards.append({"id": i, "tag": tag, "question": question,
                       "answer": answer, "example": example})
     return jsonify({"success": True, "flashcards": cards, "total": len(cards)})
@@ -305,7 +340,6 @@ def get_flashcards():
 
 @app.route("/api/progress", methods=["GET"])
 def get_progress():
-    """Read student progress JSON file. Syllabus: File I/O, Dictionaries"""
     try:
         return jsonify({"success": True, "report": get_tracker().get_full_report()})
     except EduBridgeError as e:
@@ -314,7 +348,6 @@ def get_progress():
 
 @app.route("/api/progress/clear", methods=["POST"])
 def clear_progress():
-    """Delete student progress file. Syllabus: File I/O, os module"""
     try:
         filepath = os.path.join(
             ProgressTracker.DATA_DIR,
@@ -328,7 +361,7 @@ def clear_progress():
 
 
 # ─────────────────────────────────────────────
-# API: TOPIC LISTS
+# API: TOPICS + AI STATUS
 # ─────────────────────────────────────────────
 
 @app.route("/api/topics", methods=["GET"])
@@ -341,20 +374,14 @@ def get_quiz_topics():
     return jsonify({"success": True, "topics": quiz_engine.get_all_topics()})
 
 
-# ─────────────────────────────────────────────
-# API: AI STATUS CHECK
-# ─────────────────────────────────────────────
-
 @app.route("/api/ai/status", methods=["GET"])
 def ai_status():
-    """Check if Gemini API key is configured."""
     key = os.environ.get("GEMINI_API_KEY", "").strip()
-    ok  = bool(key and len(key) > 10)
+    ok  = bool(key and len(key) > 10 and key.startswith("AIza"))
     return jsonify({
         "success":    True,
         "configured": ok,
         "model":      "gemini-2.0-flash (free)" if ok else "not configured",
-        "setup_url":  "https://aistudio.google.com/apikey",
     })
 
 
@@ -372,11 +399,11 @@ def server_error(e):
 
 
 # ─────────────────────────────────────────────
-# START (local only — Vercel uses api/index.py)
+# LOCAL RUN ONLY (Vercel uses api/index.py)
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
     key = os.environ.get("GEMINI_API_KEY", "")
-    ai  = "✅ Gemini AI ready" if (key and len(key) > 10) else "⚠️  No GEMINI_API_KEY set"
-    print(f"\n{'='*48}\n  EduBridge — http://localhost:5000\n  {ai}\n{'='*48}\n")
+    ai  = "✅ Gemini ready" if (key and key.startswith("AIza")) else "⚠️  Set GEMINI_API_KEY in .env"
+    print(f"\n{'='*45}\n  EduBridge — http://localhost:5000\n  {ai}\n{'='*45}\n")
     app.run(debug=True, port=int(os.environ.get("PORT", 5000)))
