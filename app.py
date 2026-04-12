@@ -66,7 +66,7 @@ def call_gemini(question: str) -> str:
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash:generateContent?key={api_key}"
+        f"gemini-1.5-flash:generateContent?key={api_key}"
     )
 
     body = json.dumps({
@@ -107,7 +107,9 @@ def call_gemini(question: str) -> str:
         if e.code == 403:
             raise ValueError("INVALID_KEY")
         if e.code == 429:
-            raise ValueError("RATE_LIMIT")
+            raise ValueError(f"RATE_LIMIT_{e.code}")
+        if e.code == 404:
+            raise ValueError(f"MODEL_NOT_FOUND_{e.code}")
         raise ValueError(f"HTTP_{e.code}: {body_text[:200]}")
 
     except urllib.error.URLError as e:
@@ -226,7 +228,11 @@ def solve_doubt():
             elif "INVALID_KEY" in err:
                 msg = "Gemini API key is invalid. Check the key in your Vercel settings."
             elif "RATE_LIMIT" in err:
-                msg = "Gemini rate limit hit. Wait 1 minute and try again."
+                msg = f"Gemini rate limit (429). Wait 1 minute and try again. Error: {err}"
+            elif "MODEL_NOT_FOUND" in err:
+                msg = f"Gemini model not found (404). The model name is incorrect. Error: {err}"
+            elif "BAD_REQUEST" in err:
+                msg = f"Gemini bad request (400). Error: {err}"
             else:
                 msg = f"Gemini error: {err}"
 
@@ -381,7 +387,7 @@ def ai_status():
     return jsonify({
         "success":    True,
         "configured": ok,
-        "model":      "gemini-2.0-flash (free)" if ok else "not configured",
+        "model":      "gemini-1.5-flash (free)" if ok else "not configured",
     })
 
 
